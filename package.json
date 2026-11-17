@@ -1,0 +1,23 @@
+{
+  "name": "trading-journal",
+  "version": "1.0.0",
+  "description": "Personal Trading Journal with persistent JSON backend database",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": [
+    "trading",
+    "journal",
+    "pnl",
+    "stocks",
+    "options",
+    "crypto"
+  ],
+  "author": "Ansh",
+  "license": "MIT"
+}

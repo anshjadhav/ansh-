@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In & Register - Trading Journal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+  
+  <!-- EmailJS SDK for browser email delivery -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <!-- Unified API Client & Persistent Database -->
+  <script src="api-client.js"></script>
+
+  <style>
+    :root {
+      --bg: #0b1120;
+      --card-bg: #131c2e;
+      --border: #223048;
+      --border-focus: #3b82f6;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --input-bg: #0d1527;
+      --radius: 8px;
+      --success: #22c55e;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .auth-container {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+
+    /* Minimalist Logo */
+    .brand-header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .brand-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius);
+      background: #1e293b;
+      border: 1px solid var(--border);
+      color: #60a5fa;
+      margin-bottom: 0.75rem;
+    }
+
+    .brand-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    /* Card */
+    .auth-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Tabs: Sign In / Create Account */
+    .auth-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--input-bg);
+      padding: 4px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      padding: 0.6rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Heading */
+    .auth-heading {
+      margin-bottom: 1.25rem;
+    }
+
+    .auth-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    .auth-desc {
+      font-size: 0.825rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+      line-height: 1.4;
+    }
+
+    /* Alert / Error / Success Boxes */
+    .auth-error-box {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+      padding: 0.75rem 0.9rem;
+      border-radius: var(--radius);
+      font-size: 0.825rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      line-height: 1.4;
+    }
+
+    .auth-success-box {
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      color: #86efac;
+      padding: 0.75rem 0.9rem;
+      border-radius: var(--radius);
+      font-size: 0.825rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      line-height: 1.4;
+    }
+
+    /* Form Fields */
+    .form-group {
+      margin-bottom: 1.15rem;
+    }
+
+    .form-row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .form-input, .form-select {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.65rem 0.85rem;
+      font-size: 0.875rem;
+      color: var(--text);
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .form-input:focus, .form-select:focus {
+      border-color: var(--border-focus);
+    }
+
+    .form-input::placeholder {
+      color: var(--text-dim);
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-wrapper .form-input {
+      padding-right: 3rem;
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 0.65rem;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0.25rem 0.4rem;
+      border-radius: 4px;
+    }
+
+    .password-toggle:hover {
+      color: var(--text);
+    }
+
+    .form-options {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+      font-size: 0.8rem;
+    }
+
+    .remember-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .remember-label input[type="checkbox"] {
+      accent-color: var(--primary);
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+    }
+
+    .forgot-link {
+      color: #60a5fa;
+      text-decoration: none;
+      font-size: 0.8rem;
+    }
+
+    .forgot-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Buttons */
+    .btn-submit {
+      width: 100%;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 0.75rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s ease;
+    }
+
+    .btn-submit:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* OTP Card & Security Notice */
+    .otp-email-box {
+      background: #0d1527;
+      border: 1px solid #223048;
+      border-radius: var(--radius);
+      padding: 1rem 1.15rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .otp-email-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+
+    .otp-email-title {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #f1f5f9;
+    }
+
+    .delivery-pill {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: 12px;
+      background: rgba(59, 130, 246, 0.15);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .delivery-pill.live {
+      background: rgba(34, 197, 94, 0.15);
+      color: #86efac;
+      border-color: rgba(34, 197, 94, 0.4);
+    }
+
+    .code-display-card {
+      background: #080d19;
+      border: 1px solid #1c2638;
+      border-radius: 6px;
+      padding: 0.65rem 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0.6rem 0;
+    }
+
+    .code-display-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+
+    .code-display-val {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #60a5fa;
+      letter-spacing: 0.18em;
+    }
+
+    .code-helper-text {
+      font-size: 0.725rem;
+      color: var(--text-dim);
+      line-height: 1.35;
+    }
+
+    /* 6-Digit OTP Inputs */
+    .otp-container {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .otp-digit {
+      width: 100%;
+      height: 52px;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 1.4rem;
+      font-weight: 700;
+      text-align: center;
+      font-family: "JetBrains Mono", monospace;
+      outline: none;
+      transition: all 0.15s ease;
+    }
+
+    .otp-digit:focus {
+      border-color: var(--border-focus);
+      background: #111a33;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+
+    .otp-digit.error {
+      border-color: #ef4444 !important;
+      background: rgba(239, 68, 68, 0.12) !important;
+      color: #fca5a5 !important;
+      animation: shake 0.35s ease;
+    }
+
+    .otp-digit.success {
+      border-color: #22c55e !important;
+      background: rgba(34, 197, 94, 0.12) !important;
+      color: #86efac !important;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-5px); }
+      40%, 80% { transform: translateX(5px); }
+    }
+
+    /* Result Feedback Box (Done / Wrong) */
+    .otp-result-box {
+      border-radius: var(--radius);
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 1.25rem;
+      display: none;
+      align-items: center;
+      gap: 0.6rem;
+      line-height: 1.4;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .otp-result-box.wrong {
+      display: flex;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.5);
+      color: #fca5a5;
+    }
+
+    .otp-result-box.done {
+      display: flex;
+      background: rgba(34, 197, 94, 0.15);
+      border: 1px solid rgba(34, 197, 94, 0.5);
+      color: #86efac;
+    }
+
+    .otp-resend-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 1rem;
+      font-size: 0.8rem;
+    }
+
+    .btn-resend {
+      background: none;
+      border: none;
+      color: #60a5fa;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .btn-resend:disabled {
+      color: var(--text-dim);
+      cursor: not-allowed;
+    }
+
+    .btn-resend:hover:not(:disabled) {
+      text-decoration: underline;
+    }
+
+    .btn-setup-email {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 0.75rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      text-decoration: underline;
+    }
+
+    .btn-setup-email:hover {
+      color: #f1f5f9;
+    }
+
+    /* Modal for EmailJS Setup */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      z-index: 1000;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-dialog {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 440px;
+      padding: 1.5rem;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .modal-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 1.25rem;
+      cursor: pointer;
+    }
+
+    .modal-close:hover {
+      color: var(--text);
+    }
+
+    /* Footer & Backend Badge */
+    .auth-footer {
+      text-align: center;
+      margin-top: 1.25rem;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    .backend-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      padding: 0.3rem 0.65rem;
+      border-radius: 20px;
+      margin-top: 0.75rem;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .backend-badge .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    .status-dot.online {
+      background: #22c55e;
+      box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+    }
+
+    .status-dot.offline {
+      background: #3b82f6;
+    }
+
+    /* Toast Notification */
+    .toast-msg {
+      position: fixed;
+      bottom: 1.5rem;
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #fff;
+      padding: 0.65rem 1rem;
+      border-radius: var(--radius);
+      font-size: 0.825rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      display: none;
+      animation: fadeIn 0.2s ease;
+      z-index: 100;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="auth-container">
+    <!-- Header -->
+    <div class="brand-header">
+      <div class="brand-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+          <polyline points="16 7 22 7 22 13"></polyline>
+        </svg>
+      </div>
+      <h1 class="brand-title">Trading Journal</h1>
+    </div>
+
+    <!-- Main Card -->
+    <div class="auth-card">
+      
+      <!-- VIEW 1: SIGN IN / REGISTER FORM -->
+      <div id="auth-form-view">
+        <!-- Tabs: Sign In / Create Account -->
+        <div class="auth-tabs" role="tablist">
+          <button type="button" class="tab-btn active" id="tab-login">Sign In</button>
+          <button type="button" class="tab-btn" id="tab-signup">Create Account</button>
+        </div>
+
+        <!-- Title & Description -->
+        <div class="auth-heading">
+          <h2 class="auth-title" id="auth-heading-title">Welcome back</h2>
+          <p class="auth-desc" id="auth-heading-desc">Enter your registered email and password to access your journal.</p>
+        </div>
+
+        <!-- Dynamic Error Banner -->
+        <div class="auth-error-box" id="auth-error-box" style="display: none;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <span id="auth-error-text">Account not found.</span>
+        </div>
+
+        <!-- Dynamic Success Banner -->
+        <div class="auth-success-box" id="auth-success-box" style="display: none;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          <span id="auth-success-text">Account created successfully!</span>
+        </div>
+
+        <!-- Form -->
+        <form id="auth-form" autocomplete="on">
+          <!-- Sign Up Fields: Full Name & Trading Style -->
+          <div id="signup-extra-fields" style="display: none;">
+            <div class="form-group">
+              <label class="form-label" for="input-fullname">Full Name *</label>
+              <input type="text" id="input-fullname" class="form-input" placeholder="e.g. Ansh Sharma">
+            </div>
+
+            <div class="form-row-2">
+              <div class="form-group">
+                <label class="form-label" for="input-style">Trading Style</label>
+                <select id="input-style" class="form-select">
+                  <option value="Intraday Options & Futures">Intraday Options</option>
+                  <option value="Scalper (1m - 5m)">Scalper</option>
+                  <option value="Swing Trader">Swing Trader</option>
+                  <option value="Equity Cash">Equity Cash</option>
+                  <option value="Crypto & Forex">Crypto & Forex</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="input-capital">Starting Capital (₹)</label>
+                <input type="number" id="input-capital" class="form-input" placeholder="500000" value="500000" min="0">
+              </div>
+            </div>
+          </div>
+
+          <!-- Common Fields: Email & Password -->
+          <div class="form-group">
+            <label class="form-label" for="input-email">Email Address *</label>
+            <input type="email" id="input-email" class="form-input" placeholder="name@example.com" required autocomplete="email">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="input-password">Password *</label>
+            <div class="input-wrapper">
+              <input type="password" id="input-password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+              <button type="button" class="password-toggle" id="btn-toggle-password">Show</button>
+            </div>
+          </div>
+
+          <!-- Remember Me & Forgot Password -->
+          <div class="form-options" id="login-options-row">
+            <label class="remember-label">
+              <input type="checkbox" id="check-remember" checked>
+              <span>Remember me</span>
+            </label>
+            <a href="#" class="forgot-link" id="link-forgot">Forgot password?</a>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" class="btn-submit" id="btn-auth-submit">Continue</button>
+        </form>
+      </div>
+
+      <!-- VIEW 2: OTP VERIFICATION VIEW -->
+      <div id="verify-email-view" style="display: none;">
+        <div style="text-align: center; margin-bottom: 1.25rem;">
+          <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); color: #60a5fa; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+          </div>
+          <h2 class="auth-title" id="verify-view-title">Verify OTP</h2>
+          <p class="auth-desc" id="verify-view-desc" style="margin-top: 0.35rem;">
+            Security verification code for<br>
+            <strong id="verify-email-display" style="color: var(--text);">user@example.com</strong>
+          </p>
+        </div>
+
+        <!-- Email Delivery Notice (NO OTP CODE SHOWN ON SCREEN) -->
+        <div class="otp-email-box">
+          <div class="otp-email-header">
+            <div class="otp-email-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2">
+                <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+              </svg>
+              <span>Email Delivery Status</span>
+            </div>
+            <span class="delivery-pill live" id="delivery-pill-status">Sending to Gmail...</span>
+          </div>
+
+          <div class="code-helper-text" id="otp-status-explanation" style="font-size: 0.825rem; color: #94a3b8; line-height: 1.5; margin-top: 0.35rem;">
+            Sending 6-digit verification code to your Gmail inbox...
+          </div>
+        </div>
+
+        <!-- DYNAMIC RESULT FEEDBACK: SAHI (DONE) YA GALAT (WRONG) -->
+        <div class="otp-result-box" id="otp-result-box">
+          <svg id="otp-result-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink: 0;">
+            <!-- Icon injected by JS -->
+          </svg>
+          <span id="otp-result-text">Result</span>
+        </div>
+
+        <!-- 6-Digit OTP Input Boxes (Starts completely empty) -->
+        <div class="otp-container" id="otp-inputs-wrapper">
+          <input type="text" maxlength="1" class="otp-digit" data-idx="0" inputmode="numeric" autocomplete="off">
+          <input type="text" maxlength="1" class="otp-digit" data-idx="1" inputmode="numeric" autocomplete="off">
+          <input type="text" maxlength="1" class="otp-digit" data-idx="2" inputmode="numeric" autocomplete="off">
+          <input type="text" maxlength="1" class="otp-digit" data-idx="3" inputmode="numeric" autocomplete="off">
+          <input type="text" maxlength="1" class="otp-digit" data-idx="4" inputmode="numeric" autocomplete="off">
+          <input type="text" maxlength="1" class="otp-digit" data-idx="5" inputmode="numeric" autocomplete="off">
+        </div>
+
+        <!-- Verify Button -->
+        <button type="button" class="btn-submit" id="btn-verify-submit">Verify OTP</button>
+
+        <!-- Resend, Back Navigation & Real Email Setup -->
+        <div class="otp-resend-row">
+          <a href="#" class="forgot-link" id="link-change-email">← Change Email</a>
+          <button type="button" class="btn-resend" id="btn-resend-otp" disabled>Resend Code in 30s</button>
+        </div>
+
+        <div style="text-align: center; margin-top: 1rem;">
+          <button type="button" class="btn-setup-email" id="btn-open-email-modal">
+            ⚙️ Connect Real Gmail Delivery (EmailJS)
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- EmailJS Settings Modal -->
+    <div class="modal-overlay" id="modal-emailjs">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3 class="modal-title">Real Gmail Delivery Setup</h3>
+          <button type="button" class="modal-close" id="btn-close-email-modal">&times;</button>
+        </div>
+
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.4;">
+          Google security policies require a verified sender to deliver emails to personal Gmail accounts. You can connect your free <strong>EmailJS</strong> account (200 free emails/month):
+        </p>
+
+        <form id="form-emailjs-config">
+          <div class="form-group">
+            <label class="form-label">EmailJS Public Key</label>
+            <input type="text" id="cfg-public-key" class="form-input" placeholder="e.g. u1234abcd..." required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Service ID (Gmail)</label>
+            <input type="text" id="cfg-service-id" class="form-input" placeholder="e.g. service_gmail" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Template ID</label>
+            <input type="text" id="cfg-template-id" class="form-input" placeholder="e.g. template_otp" required>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.25rem;">
+            <button type="button" class="btn-resend" id="btn-clear-email-cfg" style="padding: 0.5rem 0.75rem;">Clear</button>
+            <button type="submit" class="btn-submit" style="width: auto; padding: 0.55rem 1.25rem;">Save Keys</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Backend Status & Footer -->
+    <div class="auth-footer">
+      <div>Trading Journal &copy; 2026. Secure Local & Database Storage.</div>
+      <div id="backend-status-badge" class="backend-badge offline">
+        <span class="status-dot offline"></span> Storage: Persistent Database Active
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-msg" id="toast"></div>
+
+  <script>
+    let currentMode = 'login';       // 'login' | 'signup'
+    let currentVerificationCode = '';
+    let pendingAuthData = null;
+    let resendCountdown = 30;
+    let resendInterval = null;
+
+    // Check URL parameters (e.g. login.html?mode=signup)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('mode') === 'signup') {
+      setMode('signup');
+    }
+
+    // Elements
+    const tabLogin = document.getElementById('tab-login');
+    const tabSignup = document.getElementById('tab-signup');
+    const extraFields = document.getElementById('signup-extra-fields');
+    const headingTitle = document.getElementById('auth-heading-title');
+    const headingDesc = document.getElementById('auth-heading-desc');
+    const submitBtn = document.getElementById('btn-auth-submit');
+    const optionsRow = document.getElementById('login-options-row');
+    const errorBox = document.getElementById('auth-error-box');
+    const errorText = document.getElementById('auth-error-text');
+    const successBox = document.getElementById('auth-success-box');
+    const successText = document.getElementById('auth-success-text');
+
+    const authFormView = document.getElementById('auth-form-view');
+    const verifyEmailView = document.getElementById('verify-email-view');
+    const verifyViewTitle = document.getElementById('verify-view-title');
+    const verifyEmailDisplay = document.getElementById('verify-email-display');
+    const deliveryPillStatus = document.getElementById('delivery-pill-status');
+    const otpStatusExplanation = document.getElementById('otp-status-explanation');
+
+    const otpResultBox = document.getElementById('otp-result-box');
+    const otpResultText = document.getElementById('otp-result-text');
+    const otpResultIcon = document.getElementById('otp-result-icon');
+    const otpDigits = document.querySelectorAll('.otp-digit');
+    const btnVerifySubmit = document.getElementById('btn-verify-submit');
+    const btnResendOtp = document.getElementById('btn-resend-otp');
+    const linkChangeEmail = document.getElementById('link-change-email');
+
+    // EmailJS Modal Elements
+    const modalEmailjs = document.getElementById('modal-emailjs');
+    const btnOpenEmailModal = document.getElementById('btn-open-email-modal');
+    const btnCloseEmailModal = document.getElementById('btn-close-email-modal');
+    const formEmailjsConfig = document.getElementById('form-emailjs-config');
+    const btnClearEmailCfg = document.getElementById('btn-clear-email-cfg');
+    const cfgPublicKey = document.getElementById('cfg-public-key');
+    const cfgServiceId = document.getElementById('cfg-service-id');
+    const cfgTemplateId = document.getElementById('cfg-template-id');
+
+    // =========================================================================
+    // 1. NOTIFICATIONS & MODE SWITCHING
+    // =========================================================================
+
+    function showError(msg) {
+      errorText.textContent = msg;
+      errorBox.style.display = 'flex';
+      successBox.style.display = 'none';
+      errorBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function showSuccess(msg) {
+      successText.textContent = msg;
+      successBox.style.display = 'flex';
+      errorBox.style.display = 'none';
+      successBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function clearMessages() {
+      errorBox.style.display = 'none';
+      successBox.style.display = 'none';
+      errorText.textContent = '';
+      successText.textContent = '';
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      clearMessages();
+      if (mode === 'login') {
+        tabLogin.classList.add('active');
+        tabSignup.classList.remove('active');
+        extraFields.style.display = 'none';
+        headingTitle.textContent = 'Welcome back';
+        headingDesc.textContent = 'Enter your registered email and password to access your journal.';
+        submitBtn.textContent = 'Sign In';
+        if (optionsRow) optionsRow.style.display = 'flex';
+      } else {
+        tabSignup.classList.add('active');
+        tabLogin.classList.remove('active');
+        extraFields.style.display = 'block';
+        headingTitle.textContent = 'Create an account';
+        headingDesc.textContent = 'Register your trader profile and verify via email OTP.';
+        submitBtn.textContent = 'Create Account';
+        if (optionsRow) optionsRow.style.display = 'none';
+      }
+    }
+
+    tabLogin.addEventListener('click', () => setMode('login'));
+    tabSignup.addEventListener('click', () => setMode('signup'));
+
+    // Toggle password visibility
+    const pwdInput = document.getElementById('input-password');
+    const pwdToggle = document.getElementById('btn-toggle-password');
+    pwdToggle.addEventListener('click', () => {
+      if (pwdInput.type === 'password') {
+        pwdInput.type = 'text';
+        pwdToggle.textContent = 'Hide';
+      } else {
+        pwdInput.type = 'password';
+        pwdToggle.textContent = 'Show';
+      }
+    });
+
+    // =========================================================================
+    // 2. DISPATCH OTP (REAL EMAILJS + ON-SCREEN PREVIEW)
+    // =========================================================================
+
+    const DEFAULT_EMAILJS_CONFIG = {
+      publicKey: 'vCgkaeABN77hU8VOP',
+      serviceId: 'service_kf4eykj',
+      templateId: 'template_c8mi33c'
+    };
+
+    function getEmailJSConfig() {
+      try {
+        const stored = localStorage.getItem('trading_journal_emailjs_config_v1');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.publicKey && parsed.serviceId && parsed.templateId) {
+            return parsed;
+          }
+        }
+        // Save user's verified keys as active configuration
+        localStorage.setItem('trading_journal_emailjs_config_v1', JSON.stringify(DEFAULT_EMAILJS_CONFIG));
+        return DEFAULT_EMAILJS_CONFIG;
+      } catch(e) {
+        return DEFAULT_EMAILJS_CONFIG;
+      }
+    }
+
+    async function dispatchOtp(email, code, modeName) {
+      console.log(`[EmailJS Dispatch] Sending ${modeName} OTP to ${email}`);
+
+      // Check if real EmailJS is configured
+      const cfg = getEmailJSConfig();
+      if (window.emailjs && cfg && cfg.publicKey && cfg.serviceId && cfg.templateId) {
+        deliveryPillStatus.textContent = 'Sending to Gmail...';
+        deliveryPillStatus.className = 'delivery-pill';
+        try {
+          emailjs.init({ publicKey: cfg.publicKey });
+          const dynamicSubject = `[${modeName}] Security Code: ${code}`;
+          await emailjs.send(cfg.serviceId, cfg.templateId, {
+            email: email,
+            to_email: email,
+            user_email: email,
+            recipient: email,
+            subject: dynamicSubject,
+            title: dynamicSubject,
+            otp_code: code,
+            otp: code,
+            passcode: code,
+            code: code,
+            action_type: modeName,
+            app_name: 'Trading Journal'
+          });
+          deliveryPillStatus.textContent = 'Sent to Gmail Inbox';
+          deliveryPillStatus.className = 'delivery-pill live';
+          otpStatusExplanation.innerHTML = `✓ Real OTP has been dispatched to <strong>${email}</strong> via Gmail! Please check your Gmail Inbox (or Spam folder).`;
+          showToast(`✓ Email OTP sent to ${email}`);
+        } catch (err) {
+          console.warn('EmailJS error:', err);
+          deliveryPillStatus.textContent = 'EmailJS Notice';
+          otpStatusExplanation.innerHTML = `EmailJS notice: ${err.text || err.message || 'Check connection'}. Please click Resend Code.`;
+        }
+      } else {
+        deliveryPillStatus.textContent = 'Ready';
+        deliveryPillStatus.className = 'delivery-pill';
+        otpStatusExplanation.innerHTML = `Please check your Gmail inbox and enter the 6-digit verification code below.`;
+      }
+    }
+
+    // =========================================================================
+    // 3. FORM SUBMISSION (VALIDATION & LAUNCH OTP)
+    // =========================================================================
+
+    document.getElementById('auth-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearMessages();
+
+      const email = document.getElementById('input-email').value.trim();
+      const password = document.getElementById('input-password').value;
+      const fullName = document.getElementById('input-fullname').value.trim();
+      const style = document.getElementById('input-style').value;
+      const capital = parseFloat(document.getElementById('input-capital').value) || 500000;
+
+      if (!email || !password) {
+        showError('Please enter both email and password.');
+        return;
+      }
+
+      submitBtn.disabled = true;
+
+      // -----------------------------------------------------------------------
+      // SIGN IN MODE
+      // -----------------------------------------------------------------------
+      if (currentMode === 'login') {
+        submitBtn.textContent = 'Checking account...';
+
+        try {
+          // Check if account exists
+          let accounts = [];
+          try {
+            const raw = localStorage.getItem('trading_journal_accounts_v1');
+            accounts = raw ? JSON.parse(raw) : [];
+          } catch(e) {}
+
+          const found = accounts.find(a => a.email.toLowerCase() === email.toLowerCase());
+
+          if (!found) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Sign In';
+            showError(`Account not found with email "${email}"! Please click "Create Account" above to sign up first.`);
+            return;
+          }
+
+          if (found.password !== password) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Sign In';
+            showError('Incorrect password! Please check your password and try again.');
+            return;
+          }
+
+          pendingAuthData = {
+            mode: 'login',
+            email: found.email,
+            user: {
+              isLoggedIn: true,
+              isVerified: true,
+              name: found.name,
+              fullName: found.fullName || found.name,
+              email: found.email,
+              avatar: (found.name.substring(0, 2) || 'TR').toUpperCase(),
+              role: 'PRO TRADER',
+              tradingStyle: found.tradingStyle || 'Intraday Options & Futures',
+              broker: found.broker || 'Zerodha Kite',
+              maxDailyLoss: found.maxDailyLoss || 10000,
+              maxTradesPerDay: found.maxTradesPerDay || 4,
+              rules: found.rules || { stoploss: true, twoLosses: true, noFomo: true, journal: true }
+            },
+            capital: found.capital || 500000
+          };
+
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Sign In';
+
+          // Launch OTP verification
+          openOtpView(email, 'Login Verification');
+
+        } catch (err) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Sign In';
+          showError('An error occurred. Please try again.');
+        }
+
+      // -----------------------------------------------------------------------
+      // CREATE ACCOUNT MODE
+      // -----------------------------------------------------------------------
+      } else {
+        if (password.length < 6) {
+          submitBtn.disabled = false;
+          showError('Password must be at least 6 characters long.');
+          return;
+        }
+
+        submitBtn.textContent = 'Checking registration...';
+
+        try {
+          let accounts = [];
+          try {
+            const raw = localStorage.getItem('trading_journal_accounts_v1');
+            accounts = raw ? JSON.parse(raw) : [];
+          } catch(e) {}
+
+          const existing = accounts.find(a => a.email.toLowerCase() === email.toLowerCase());
+          if (existing) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create Account';
+            showError(`An account with email "${email}" already exists! Please switch to "Sign In" to log in.`);
+            return;
+          }
+
+          // Register account in DB immediately so it's safely stored
+          const regResult = await ApiClient.register({
+            email,
+            password,
+            fullName,
+            tradingStyle: style,
+            capital: capital,
+            broker: 'Zerodha Kite'
+          });
+
+          pendingAuthData = {
+            mode: 'signup',
+            email: email,
+            user: regResult.user,
+            capital: regResult.capital
+          };
+
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Create Account';
+
+          // Launch OTP verification
+          openOtpView(email, 'Account Registration');
+
+        } catch (err) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Create Account';
+          showError('Error creating account. Please try again.');
+        }
+      }
+    });
+
+    // =========================================================================
+    // 4. OTP VIEW & STRICT VALIDATION (SAHI = DONE, GALAT = WRONG)
+    // =========================================================================
+
+    function openOtpView(email, actionName) {
+      // 1. Generate 6-digit random security code
+      currentVerificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      verifyEmailDisplay.textContent = email;
+      verifyViewTitle.textContent = currentMode === 'login' ? 'Login Verification' : 'Verify Your Email';
+
+      // Reset feedback box
+      otpResultBox.style.display = 'none';
+      otpResultBox.className = 'otp-result-box';
+
+      // Clear all 6 digit inputs
+      otpDigits.forEach(d => {
+        d.value = '';
+        d.classList.remove('error', 'success');
+      });
+
+      btnVerifySubmit.disabled = false;
+      btnVerifySubmit.textContent = 'Verify OTP';
+
+      // Switch view
+      authFormView.style.display = 'none';
+      verifyEmailView.style.display = 'block';
+
+      // Focus first digit box
+      setTimeout(() => {
+        if (otpDigits[0]) otpDigits[0].focus();
+      }, 150);
+
+      // Start Resend Timer
+      startResendTimer();
+
+      // Dispatch OTP
+      dispatchOtp(email, currentVerificationCode, actionName);
+    }
+
+    function startResendTimer() {
+      if (resendInterval) clearInterval(resendInterval);
+      resendCountdown = 30;
+      btnResendOtp.disabled = true;
+      btnResendOtp.textContent = `Resend Code in ${resendCountdown}s`;
+
+      resendInterval = setInterval(() => {
+        resendCountdown--;
+        if (resendCountdown <= 0) {
+          clearInterval(resendInterval);
+          btnResendOtp.disabled = false;
+          btnResendOtp.textContent = 'Resend OTP';
+        } else {
+          btnResendOtp.textContent = `Resend Code in ${resendCountdown}s`;
+        }
+      }, 1000);
+    }
+
+    btnResendOtp.addEventListener('click', () => {
+      if (btnResendOtp.disabled) return;
+      currentVerificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      otpDigits.forEach(d => {
+        d.value = '';
+        d.classList.remove('error', 'success');
+      });
+      otpResultBox.style.display = 'none';
+      otpDigits[0].focus();
+
+      startResendTimer();
+      dispatchOtp(verifyEmailDisplay.textContent, currentVerificationCode, 'Resent OTP');
+    });
+
+    // Handle user typing and auto-focus next digit
+    otpDigits.forEach((digitInput, idx) => {
+      digitInput.addEventListener('input', (e) => {
+        const val = e.target.value.replace(/\D/g, '');
+        e.target.value = val ? val.slice(-1) : '';
+
+        // Clear error style on typing
+        digitInput.classList.remove('error');
+
+        // Advance to next box
+        if (e.target.value && idx < otpDigits.length - 1) {
+          otpDigits[idx + 1].focus();
+        }
+
+        // Check if all 6 digits are filled
+        checkAndVerifyEnteredOtp();
+      });
+
+      digitInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !digitInput.value && idx > 0) {
+          otpDigits[idx - 1].focus();
+        }
+      });
+
+      // Handle paste
+      digitInput.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+        if (pasted) {
+          pasted.split('').forEach((char, i) => {
+            if (otpDigits[i]) otpDigits[i].value = char;
+          });
+          const focusIndex = Math.min(pasted.length, otpDigits.length - 1);
+          otpDigits[focusIndex].focus();
+          checkAndVerifyEnteredOtp();
+        }
+      });
+    });
+
+    function getEnteredOtp() {
+      let code = '';
+      otpDigits.forEach(d => code += d.value.trim());
+      return code;
+    }
+
+    function checkAndVerifyEnteredOtp() {
+      const entered = getEnteredOtp();
+      if (entered.length === 6) {
+        validateOtpCode(entered);
+      }
+    }
+
+    btnVerifySubmit.addEventListener('click', () => {
+      const entered = getEnteredOtp();
+      if (entered.length < 6) {
+        showWrongFeedback('Please enter all 6 digits of your OTP.');
+        return;
+      }
+      validateOtpCode(entered);
+    });
+
+    // =========================================================================
+    // 5. STRICT OTP VALIDATION: SAHI (DONE) VS GALAT (WRONG)
+    // =========================================================================
+    function validateOtpCode(enteredCode) {
+      if (enteredCode === currentVerificationCode) {
+        // =====================================================================
+        // SAHI / CORRECT OTP -> DONE!
+        // =====================================================================
+        showDoneFeedback('Done! OTP Verified Successfully.');
+
+        // Highlight input boxes in green
+        otpDigits.forEach(d => {
+          d.classList.remove('error');
+          d.classList.add('success');
+        });
+
+        btnVerifySubmit.disabled = true;
+        btnVerifySubmit.textContent = '✓ Done! Opening Journal...';
+
+        // Finalize login session in localStorage
+        if (pendingAuthData && pendingAuthData.user) {
+          localStorage.setItem('trading_journal_user_v1', JSON.stringify(pendingAuthData.user));
+          if (pendingAuthData.capital) {
+            localStorage.setItem('trading_journal_capital_v1', pendingAuthData.capital.toString());
+          }
+        }
+
+        showToast('✓ Done! Verified successfully.');
+
+        // Redirect to Journal
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 650);
+
+      } else {
+        // =====================================================================
+        // GALAT / INCORRECT OTP -> WRONG!
+        // =====================================================================
+        showWrongFeedback('Wrong OTP! The code you entered is incorrect. Please try again.');
+
+        // Add shake and red error to digits
+        otpDigits.forEach(d => {
+          d.classList.remove('success');
+          d.classList.add('error');
+          d.value = ''; // Clear wrong digits
+        });
+
+        // Re-focus on first digit box so user can re-try
+        setTimeout(() => {
+          otpDigits[0].focus();
+        }, 100);
+      }
+    }
+
+    function showDoneFeedback(msg) {
+      otpResultBox.className = 'otp-result-box done';
+      otpResultIcon.innerHTML = '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>';
+      otpResultText.textContent = msg;
+      otpResultBox.style.display = 'flex';
+    }
+
+    function showWrongFeedback(msg) {
+      otpResultBox.className = 'otp-result-box wrong';
+      otpResultIcon.innerHTML = '<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>';
+      otpResultText.textContent = msg;
+      otpResultBox.style.display = 'flex';
+    }
+
+    // Change email / Back to login
+    linkChangeEmail.addEventListener('click', (e) => {
+      e.preventDefault();
+      verifyEmailView.style.display = 'none';
+      authFormView.style.display = 'block';
+      if (resendInterval) clearInterval(resendInterval);
+    });
+
+    // =========================================================================
+    // 6. EMAILJS MODAL SETUP FOR REAL GMAIL DELIVERY
+    // =========================================================================
+
+    btnOpenEmailModal.addEventListener('click', () => {
+      const cfg = getEmailJSConfig() || {};
+      cfgPublicKey.value = cfg.publicKey || '';
+      cfgServiceId.value = cfg.serviceId || '';
+      cfgTemplateId.value = cfg.templateId || '';
+      modalEmailjs.classList.add('active');
+    });
+
+    btnCloseEmailModal.addEventListener('click', () => {
+      modalEmailjs.classList.remove('active');
+    });
+
+    modalEmailjs.addEventListener('click', (e) => {
+      if (e.target === modalEmailjs) modalEmailjs.classList.remove('active');
+    });
+
+    formEmailjsConfig.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const cfg = {
+        publicKey: cfgPublicKey.value.trim(),
+        serviceId: cfgServiceId.value.trim(),
+        templateId: cfgTemplateId.value.trim()
+      };
+      localStorage.setItem('trading_journal_emailjs_config_v1', JSON.stringify(cfg));
+      modalEmailjs.classList.remove('active');
+      showToast('✓ EmailJS keys saved! Real OTPs will now be sent to your Gmail inbox.');
+      
+      // Re-trigger dispatch with real service
+      dispatchOtp(verifyEmailDisplay.textContent, currentVerificationCode, 'Live Test');
+    });
+
+    btnClearEmailCfg.addEventListener('click', () => {
+      localStorage.removeItem('trading_journal_emailjs_config_v1');
+      cfgPublicKey.value = '';
+      cfgServiceId.value = '';
+      cfgTemplateId.value = '';
+      showToast('EmailJS keys cleared.');
+    });
+
+    // Forgot password helper
+    document.getElementById('link-forgot').addEventListener('click', (e) => {
+      e.preventDefault();
+      const email = document.getElementById('input-email').value.trim();
+      if (!email) {
+        showError('Please enter your email address in the field above first.');
+        return;
+      }
+      try {
+        const raw = localStorage.getItem('trading_journal_accounts_v1');
+        const accounts = raw ? JSON.parse(raw) : [];
+        const found = accounts.find(a => a.email.toLowerCase() === email.toLowerCase());
+        if (found) {
+          showSuccess(`Your password for ${email} is: "${found.password}"`);
+        } else {
+          showError(`No account registered with ${email}. Please click "Create Account".`);
+        }
+      } catch(err) {
+        showError('Could not retrieve password.');
+      }
+    });
+
+    function showToast(text) {
+      const toast = document.getElementById('toast');
+      toast.textContent = text;
+      toast.style.display = 'block';
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 3500);
+    }
+  </script>
+</body>
+</html>

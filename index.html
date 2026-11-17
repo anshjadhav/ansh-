@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal Trading Journal - Track Balance, Trades & Performance</title>
+
+  <!-- Immediate Auth Guard: Redirect unauthenticated visitors to login.html -->
+  <script>
+    (function() {
+      try {
+        var user = JSON.parse(localStorage.getItem('trading_journal_user_v1'));
+        if (!user || !user.isLoggedIn) {
+          window.location.replace('login.html');
+        }
+      } catch(e) {
+        window.location.replace('login.html');
+      }
+    })();
+  </script>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header & Top Navigation -->
+    <header class="app-header">
+      <div class="brand-section">
+        <div class="brand-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+            <polyline points="16 7 22 7 22 13"></polyline>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">
+            Trading Journal
+            <span class="brand-badge">PRO</span>
+            <span id="backend-status-badge" class="backend-badge offline" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.68rem; padding: 0.18rem 0.5rem; border-radius: 12px; margin-left: 0.45rem; background: #131c2e; border: 1px solid #223048; color: #94a3b8; vertical-align: middle;">
+              <span class="status-dot offline" style="width: 6px; height: 6px; border-radius: 50%; background: #3b82f6;"></span> Storage: Persistent DB
+            </span>
+          </h1>
+          <p class="brand-subtitle">Track capital, daily trades, and execution edge</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="btn-open-analytics" class="btn btn-secondary btn-sm" title="View Equity Curve & Charts">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+          </svg>
+          Analytics
+        </button>
+
+        <button id="btn-export-csv" class="btn btn-secondary btn-sm" title="Export journal to CSV file">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Export CSV
+        </button>
+
+        <button id="btn-add-trade-top" class="btn btn-primary btn-sm">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          + Add Trade
+        </button>
+
+        <!-- User Profile & Account Menu Pill -->
+        <div class="user-profile-menu-container">
+          <button class="user-profile-btn" id="btn-user-profile-toggle" title="Profile & Account">
+            <div class="user-avatar-circle" id="header-user-avatar">AS</div>
+            <div class="user-btn-details">
+              <span class="user-btn-name" id="header-user-name">Ansh</span>
+              <span class="user-btn-role" id="header-user-role">PRO TRADER</span>
+            </div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); margin-left: 2px;">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+
+          <!-- Dropdown Menu -->
+          <div class="profile-dropdown-menu" id="profile-dropdown">
+            <div class="dropdown-user-header">
+              <div class="user-avatar-circle" id="dropdown-user-avatar">AS</div>
+              <div class="dropdown-user-info">
+                <span class="dropdown-user-name" id="dropdown-user-name">Ansh Sharma</span>
+                <span class="dropdown-user-email" id="dropdown-user-email">ansh@trading.pro</span>
+              </div>
+            </div>
+
+            <button class="dropdown-item" id="menu-item-profile">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              Profile & Account Settings
+            </button>
+
+            <button class="dropdown-item" id="menu-item-rules">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              Risk Rules & Discipline
+            </button>
+
+            <button class="dropdown-item" id="menu-item-capital">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12M17 10H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+              Capital & Currency
+            </button>
+
+            <div class="dropdown-divider"></div>
+
+            <button class="dropdown-item danger" id="menu-item-auth">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+              <span id="menu-auth-label">Switch / Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 1. Dashboard Header & Overview Metrics -->
+    <section class="metrics-grid" aria-label="Dashboard Performance Overview">
+      <!-- Metric 1: Total Capital / Balance -->
+      <div class="metric-card accent-blue">
+        <div class="metric-header">
+          <span>Total Capital</span>
+          <div class="metric-icon-bubble blue">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+              <line x1="2" y1="10" x2="22" y2="10"></line>
+            </svg>
+          </div>
+        </div>
+        <div class="metric-value-row">
+          <span class="metric-value" id="metric-total-balance">₹5,00,000.00</span>
+        </div>
+        <div class="metric-footer">
+          <span>Starting: <strong id="metric-starting-balance">₹5,00,000.00</strong></span>
+          <button class="metric-btn-edit" id="btn-quick-edit-capital" title="Edit Initial Balance">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+            Edit
+          </button>
+        </div>
+      </div>
+
+      <!-- Metric 2: Total Net P&L -->
+      <div class="metric-card accent-green" id="card-metric-pnl">
+        <div class="metric-header">
+          <span>Total Net P&L</span>
+          <div class="metric-icon-bubble green" id="icon-bubble-pnl">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+              <polyline points="17 6 23 6 23 12"></polyline>
+            </svg>
+          </div>
+        </div>
+        <div class="metric-value-row">
+          <span class="metric-value profit" id="metric-net-pnl">+₹0.00</span>
+          <span class="metric-pill profit" id="metric-pnl-roi">+0.0%</span>
+        </div>
+        <div class="metric-footer">
+          <span>Gross Win: <strong id="metric-gross-profit" style="color: var(--color-profit);">₹0</strong></span>
+          <span>Loss: <strong id="metric-gross-loss" style="color: var(--color-loss);">₹0</strong></span>
+        </div>
+      </div>
+
+      <!-- Metric 3: Overall Win Rate (%) -->
+      <div class="metric-card accent-purple">
+        <div class="metric-header">
+          <span>Overall Win Rate</span>
+          <div class="metric-icon-bubble purple">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+              <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+              <path d="M4 22h16"></path>
+              <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
+              <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
+              <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="metric-value-row">
+          <span class="metric-value" id="metric-win-rate">0.0%</span>
+          <span class="metric-pill neutral" id="metric-win-loss-ratio">0W / 0L</span>
+        </div>
+        <div class="winrate-bar-container">
+          <div class="winrate-bar-fill" id="metric-winrate-bar" style="width: 0%;"></div>
+        </div>
+        <div class="metric-footer">
+          <span>Target: 60%+</span>
+          <span id="metric-breakeven-count">0 Breakeven</span>
+        </div>
+      </div>
+
+      <!-- Metric 4: Total Trades Count & Profit Factor -->
+      <div class="metric-card accent-blue">
+        <div class="metric-header">
+          <span>Trades & Efficiency</span>
+          <div class="metric-icon-bubble blue">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+        </div>
+        <div class="metric-value-row">
+          <span class="metric-value" id="metric-total-trades">0</span>
+          <span class="metric-pill neutral" id="metric-avg-trade">Avg: ₹0</span>
+        </div>
+        <div class="metric-footer">
+          <span>Profit Factor: <strong id="metric-profit-factor">0.00</strong></span>
+          <span>Charges: <strong id="metric-total-charges">₹0</strong></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Navigation / View Tabs (Cleanly Centered & Aligned) -->
+    <div style="display: flex; justify-content: flex-start; align-items: center; gap: 1rem;">
+      <div class="view-tabs" role="tablist">
+        <button class="view-tab-btn active" id="tab-calendar-view" role="tab" aria-selected="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          Calendar & Daily Log
+        </button>
+        <button class="view-tab-btn" id="tab-all-trades-view" role="tab" aria-selected="false">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+          </svg>
+          All Trades History (<span id="all-trades-count-badge">0</span>)
+        </button>
+      </div>
+    </div>
+
+    <!-- MAIN VIEW 1: Calendar View (Split Grid: Calendar Left + Daily Logs Right) -->
+    <div id="calendar-view-container" class="main-grid">
+      
+      <!-- 2. Interactive Calendar & Date Navigation -->
+      <section class="panel-card" aria-label="Trading Calendar">
+        <div class="panel-card-header">
+          <h2 class="panel-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-accent);">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            Trade Calendar
+          </h2>
+          <button class="btn btn-secondary btn-sm" id="btn-cal-today">Today</button>
+        </div>
+
+        <div class="calendar-controls">
+          <!-- Month & Year selectors + Next/Prev -->
+          <div class="calendar-nav-row">
+            <button class="btn btn-secondary btn-icon" id="btn-prev-month" title="Previous Month">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+
+            <div class="calendar-selectors">
+              <select id="cal-month-select" class="select-custom" aria-label="Select Month">
+                <option value="0">January</option>
+                <option value="1">February</option>
+                <option value="2">March</option>
+                <option value="3">April</option>
+                <option value="4">May</option>
+                <option value="5">June</option>
+                <option value="6">July</option>
+                <option value="7">August</option>
+                <option value="8">September</option>
+                <option value="9">October</option>
+                <option value="10">November</option>
+                <option value="11">December</option>
+              </select>
+
+              <select id="cal-year-select" class="select-custom" aria-label="Select Year">
+                <!-- Dynamically populated 2020 - 2032 -->
+              </select>
+            </div>
+
+            <button class="btn btn-secondary btn-icon" id="btn-next-month" title="Next Month">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Quick Jump To Specific Date (e.g. 08-10-2026 or custom) -->
+          <div class="calendar-quick-jump">
+            <span class="jump-label">Jump to Date:</span>
+            <input type="date" id="cal-jump-input" class="input-date-jump">
+            <button id="btn-quick-jump-go" class="btn btn-primary btn-sm" style="padding: 0.3rem 0.65rem; font-size: 0.75rem;">
+              Jump
+            </button>
+          </div>
+        </div>
+
+        <!-- Calendar Body Grid -->
+        <div class="calendar-body">
+          <div class="calendar-weekdays">
+            <div>Sun</div>
+            <div>Mon</div>
+            <div>Tue</div>
+            <div>Wed</div>
+            <div>Thu</div>
+            <div>Fri</div>
+            <div>Sat</div>
+          </div>
+          <div class="calendar-grid" id="calendar-days-grid">
+            <!-- Day cells populated via JavaScript -->
+          </div>
+        </div>
+
+        <!-- Calendar Indicators Legend -->
+        <div class="calendar-legend">
+          <div class="legend-item">
+            <span class="legend-dot green"></span>
+            <span>Profit Day</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot red"></span>
+            <span>Loss Day</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot blue"></span>
+            <span>Selected Date</span>
+          </div>
+          <div class="legend-item">
+            <span style="font-size: 0.65rem; background: rgba(255,255,255,0.1); padding: 1px 4px; border-radius: 4px;">#</span>
+            <span>Trades Count</span>
+          </div>
+        </div>
+
+        <!-- Month Summary Stats Bar -->
+        <div class="month-stats-bar">
+          <div class="month-stat-box">
+            <span class="month-stat-label">Month P&L</span>
+            <span class="month-stat-value profit" id="cal-month-pnl">₹0.00</span>
+          </div>
+          <div class="month-stat-box">
+            <span class="month-stat-label">Trading Days</span>
+            <span class="month-stat-value" id="cal-month-days">0</span>
+          </div>
+          <div class="month-stat-box">
+            <span class="month-stat-label">Win Days %</span>
+            <span class="month-stat-value" id="cal-month-win-days">0%</span>
+          </div>
+          <div class="month-stat-box">
+            <span class="month-stat-label">Total Trades</span>
+            <span class="month-stat-value" id="cal-month-trades-count">0</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Daily Trade Logs Section (Date-wise View) -->
+      <section class="panel-card" aria-label="Daily Trade Logs">
+        <div class="panel-card-header">
+          <div class="selected-date-info">
+            <div class="selected-date-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-accent);">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              <span id="selected-date-heading">Trades for Selected Date</span>
+            </div>
+            <div class="date-pills-row">
+              <span class="metric-pill neutral" id="pill-selected-count">0 Trades</span>
+              <span class="metric-pill neutral" id="pill-selected-pnl">Net: ₹0.00</span>
+              <span class="metric-pill neutral" id="pill-selected-winrate">Win Rate: 0%</span>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button id="btn-add-trade-day" class="btn btn-primary btn-sm">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              + Log Trade for Date
+            </button>
+          </div>
+        </div>
+
+        <!-- Daily Trade Logs Table Container -->
+        <div class="table-responsive">
+          <table class="trade-table" id="daily-trade-table">
+            <thead>
+              <tr>
+                <th>Symbol / Instrument</th>
+                <th>Type</th>
+                <th>Qty</th>
+                <th>Entry Price</th>
+                <th>Exit Price</th>
+                <th>Net P&L</th>
+                <th>Tags & Notes</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="daily-trades-tbody">
+              <!-- Populated dynamically via JS -->
+            </tbody>
+          </table>
+
+          <!-- Empty State (Shown when selected date has no trades) -->
+          <div id="daily-empty-state" class="empty-state" style="display: none;">
+            <div class="empty-state-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="12" y1="18" x2="12" y2="12"></line>
+                <line x1="9" y1="15" x2="15" y2="15"></line>
+              </svg>
+            </div>
+            <h3 class="empty-state-title" id="empty-state-title-text">No trades logged for this date</h3>
+            <p class="empty-state-desc">Click on any marked date in the calendar or add a new trade entry for this date.</p>
+            <button class="btn btn-primary btn-sm" id="btn-empty-add-trade">
+              + Log Trade for Selected Date
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- MAIN VIEW 2: All Trades Journal (Hidden by default, switched via Tabs) -->
+    <div id="all-trades-view-container" class="panel-card" style="display: none;">
+      <div class="all-trades-toolbar">
+        <div class="search-input-box">
+          <span class="search-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </span>
+          <input type="text" id="filter-search-input" placeholder="Search symbol, notes, strategy...">
+        </div>
+
+        <div class="filter-group">
+          <select id="filter-type-select" class="select-custom">
+            <option value="ALL">All Types (Buy & Sell)</option>
+            <option value="BUY">BUY Only</option>
+            <option value="SELL">SELL Only</option>
+          </select>
+
+          <select id="filter-outcome-select" class="select-custom">
+            <option value="ALL">All Outcomes</option>
+            <option value="WIN">Winners Only</option>
+            <option value="LOSS">Losers Only</option>
+          </select>
+
+          <button id="btn-clear-filters" class="btn btn-secondary btn-sm" title="Clear all search filters">
+            Reset Filters
+          </button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="trade-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Symbol / Instrument</th>
+              <th>Type</th>
+              <th>Qty</th>
+              <th>Entry Price</th>
+              <th>Exit Price</th>
+              <th>Charges</th>
+              <th>Net P&L</th>
+              <th>Strategy / Notes</th>
+              <th style="text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="all-trades-tbody">
+            <!-- Dynamically populated via JS -->
+          </tbody>
+        </table>
+
+        <!-- Empty state for search filters -->
+        <div id="all-trades-empty-state" class="empty-state" style="display: none;">
+          <div class="empty-state-icon">🔍</div>
+          <h3 class="empty-state-title">No trades match your search criteria</h3>
+          <p class="empty-state-desc">Try clearing the search query or changing your filters.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 1: ADD / EDIT TRADE MODAL (Enhanced & Polished Layout)
+       ========================================================================= -->
+  <div class="modal-backdrop" id="modal-trade" role="dialog" aria-modal="true" aria-labelledby="modal-trade-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-trade-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-accent);">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+            <polyline points="2 17 12 22 22 17"></polyline>
+            <polyline points="2 12 12 17 22 12"></polyline>
+          </svg>
+          <span id="modal-title-text">Add New Trade</span>
+        </h3>
+        <button class="modal-close-btn" id="modal-trade-close" aria-label="Close modal">✕</button>
+      </div>
+
+      <form id="trade-form">
+        <div class="modal-body">
+          <input type="hidden" id="form-trade-id">
+
+          <!-- Row 1: Trade Type (BUY / SELL) -->
+          <div class="form-group">
+            <label class="form-label">Trade Direction *</label>
+            <div class="trade-type-toggle">
+              <button type="button" class="type-toggle-btn active buy" id="toggle-type-buy" data-type="BUY">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="19" x2="12" y2="5"></line>
+                  <polyline points="5 12 12 5 19 12"></polyline>
+                </svg>
+                BUY (Long)
+              </button>
+              <button type="button" class="type-toggle-btn sell" id="toggle-type-sell" data-type="SELL">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <polyline points="19 12 12 19 5 12"></polyline>
+                </svg>
+                SELL (Short)
+              </button>
+            </div>
+            <input type="hidden" id="form-trade-type" value="BUY">
+          </div>
+
+          <!-- Row 2: Date & Symbol -->
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="form-date">Trade Date *</label>
+              <input type="date" id="form-date" class="form-input" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="form-symbol">Symbol / Instrument *</label>
+              <input type="text" id="form-symbol" class="form-input" placeholder="e.g. NIFTY, BANKNIFTY, RELIANCE" required>
+            </div>
+          </div>
+
+          <!-- Quick Symbol Suggestions Chips -->
+          <div class="symbol-chips">
+            <span style="font-size: 0.725rem; color: var(--text-muted); align-self: center;">Quick pick:</span>
+            <button type="button" class="chip-btn" data-symbol="NIFTY 24000 CE">NIFTY 24000 CE</button>
+            <button type="button" class="chip-btn" data-symbol="BANKNIFTY 51500 PE">BANKNIFTY 51500 PE</button>
+            <button type="button" class="chip-btn" data-symbol="RELIANCE">RELIANCE</button>
+            <button type="button" class="chip-btn" data-symbol="HDFCBANK">HDFCBANK</button>
+            <button type="button" class="chip-btn" data-symbol="TCS">TCS</button>
+            <button type="button" class="chip-btn" data-symbol="BTC/USDT">BTC/USDT</button>
+          </div>
+
+          <!-- Row 3: Execution Prices (Wide 2-column layout) -->
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="form-entry-price">Entry Price</label>
+              <input type="number" id="form-entry-price" class="form-input" min="0" step="any" placeholder="0.00">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="form-exit-price">Exit Price</label>
+              <input type="number" id="form-exit-price" class="form-input" min="0" step="any" placeholder="0.00">
+            </div>
+          </div>
+
+          <!-- Row 4: Quantity & Brokerage Charges (Clean 2-column layout) -->
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="form-quantity">Quantity / Lots</label>
+              <input type="number" id="form-quantity" class="form-input" min="0" step="any" placeholder="0">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="form-charges">Brokerage / Charges</label>
+              <input type="number" id="form-charges" class="form-input" min="0" step="any" placeholder="0">
+            </div>
+          </div>
+
+          <!-- Row 5: Strategy Setup & Psychology Tag (2-column layout) -->
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="form-strategy">Strategy Setup</label>
+              <input type="text" id="form-strategy" class="form-input" placeholder="e.g. 15m Breakout, EMA Crossover" list="strategy-suggestions">
+              <datalist id="strategy-suggestions">
+                <option value="15m Breakout">
+                <option value="Support & Resistance">
+                <option value="EMA Pullback">
+                <option value="Scalp 1:2">
+                <option value="Opening Range Breakout (ORB)">
+                <option value="Gap Fill Strategy">
+                <option value="Volume Spread Analysis">
+              </datalist>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="form-tags">Psychology / Discipline Tag</label>
+              <select id="form-tags" class="form-select">
+                <option value="Disciplined Trade">Disciplined Trade (Followed Rules)</option>
+                <option value="Target Achieved">Target Achieved</option>
+                <option value="Strict Stoploss Hit">Strict Stoploss Hit</option>
+                <option value="FOMO Entry">FOMO Entry (Mistake)</option>
+                <option value="Revenge Trade">Revenge Trade (Mistake)</option>
+                <option value="Early Exit">Early Exit / Left Profit on Table</option>
+                <option value="Overtrading">Overtrading</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Manual Realized Profit or Loss Entry (Replaces Estimated Preview) -->
+          <div class="manual-pnl-card profit-mode" id="manual-pnl-card">
+            <div class="manual-pnl-header">
+              <label class="form-label" for="form-manual-pnl-amount">Realized Net P&L (Manual Profit / Loss) *</label>
+              <span class="manual-pnl-badge profit" id="manual-pnl-badge">PROFIT TRADE</span>
+            </div>
+
+            <div class="manual-pnl-grid">
+              <!-- Profit / Loss Toggle Buttons -->
+              <div class="manual-pnl-toggle">
+                <button type="button" class="btn-manual-pnl-type active profit" id="toggle-manual-profit">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="18 15 12 9 6 15"></polyline>
+                  </svg>
+                  Profit (+)
+                </button>
+                <button type="button" class="btn-manual-pnl-type loss" id="toggle-manual-loss">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                  Loss (-)
+                </button>
+              </div>
+
+              <!-- Manual Amount Input with Currency Symbol -->
+              <div class="manual-pnl-input-wrap">
+                <span class="manual-pnl-currency" id="manual-pnl-currency-sym">₹</span>
+                <input type="number" id="form-manual-pnl-amount" class="form-input manual-pnl-input profit" min="0" step="any" placeholder="0.00" required>
+              </div>
+            </div>
+
+            <input type="hidden" id="form-manual-pnl-type" value="PROFIT">
+
+            <div class="manual-pnl-sub">
+              <span id="manual-pnl-summary-hint">Directly enter manual profit/loss amount, or fill prices above to auto-suggest</span>
+              <span id="manual-pnl-calculated-net" style="font-weight: 600; color: var(--text-secondary);"></span>
+            </div>
+          </div>
+
+          <!-- Row 6: Notes / Rationale -->
+          <div class="form-group">
+            <label class="form-label" for="form-notes">Trade Notes / Rationale</label>
+            <textarea id="form-notes" class="form-textarea" rows="2" placeholder="Why did you take this trade? Market condition, setup, emotions..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="modal-trade-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-trade">Save Trade</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 2: USER PROFILE & ACCOUNT SETTINGS (NEW!)
+       ========================================================================= -->
+  <div class="modal-backdrop" id="modal-profile" role="dialog" aria-modal="true" aria-labelledby="modal-profile-title">
+    <div class="modal-card" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-profile-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-accent);">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          Trader Profile & Account
+        </h3>
+        <button class="modal-close-btn" id="modal-profile-close">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Profile Hero Banner -->
+        <div class="profile-hero">
+          <div class="profile-hero-avatar" id="profile-hero-avatar">AS</div>
+          <div class="profile-hero-details">
+            <div class="profile-hero-name">
+              <span id="profile-display-name">Ansh Sharma</span>
+              <span class="brand-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; border-color: rgba(34, 197, 94, 0.4);">
+                VERIFIED TRADER
+              </span>
+            </div>
+            <div class="profile-hero-email" id="profile-display-email">ansh@trading.pro</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+              Member since: <strong style="color: var(--text-secondary);">October 2026</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub Tabs -->
+        <div class="profile-sub-tabs">
+          <button type="button" class="profile-sub-tab-btn active" data-subtab="profile-info">Personal Details</button>
+          <button type="button" class="profile-sub-tab-btn" data-subtab="profile-rules">Risk Rules & Discipline</button>
+          <button type="button" class="profile-sub-tab-btn" data-subtab="profile-capital">Starting Capital</button>
+          <button type="button" class="profile-sub-tab-btn" data-subtab="profile-data">Data Management</button>
+        </div>
+
+        <!-- TAB 1: Personal Details -->
+        <div id="subtab-profile-info" class="profile-tab-section">
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="profile-input-name">Full Name</label>
+              <input type="text" id="profile-input-name" class="form-input" value="Ansh Sharma">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="profile-input-email" style="display: flex; align-items: center; justify-content: space-between;">
+                <span>Email Address</span>
+                <span id="profile-email-verified-badge" style="font-size: 0.7rem; font-weight: 500; color: #22c55e; background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.3); padding: 1px 6px; border-radius: 4px;">✓ Verified</span>
+              </label>
+              <input type="email" id="profile-input-email" class="form-input" value="ansh@trading.pro">
+            </div>
+          </div>
+
+          <div class="form-row-2" style="margin-top: 0.75rem;">
+            <div class="form-group">
+              <label class="form-label" for="profile-input-style">Trading Style</label>
+              <select id="profile-input-style" class="form-select">
+                <option value="Intraday Options & Futures">Intraday Options & Futures</option>
+                <option value="Scalper (1m - 5m)">Scalper (1m - 5m)</option>
+                <option value="Swing Trader">Swing Trader (Daily / Weekly)</option>
+                <option value="Equity Cash Trader">Equity Cash Trader</option>
+                <option value="Crypto & Forex">Crypto & Forex Trader</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="profile-input-broker">Primary Broker</label>
+              <select id="profile-input-broker" class="form-select">
+                <option value="Zerodha Kite">Zerodha Kite</option>
+                <option value="Groww">Groww</option>
+                <option value="Angel One">Angel One</option>
+                <option value="Dhan">Dhan</option>
+                <option value="Upstox">Upstox</option>
+                <option value="Interactive Brokers">Interactive Brokers</option>
+                <option value="Binance / Crypto">Binance / Bybit</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: Risk Rules & Discipline -->
+        <div id="subtab-profile-rules" class="profile-tab-section" style="display: none;">
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="profile-risk-loss">Max Daily Loss Limit (₹ / $)</label>
+              <input type="number" id="profile-risk-loss" class="form-input" placeholder="10000" value="10000">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="profile-risk-trades">Max Trades Per Day</label>
+              <input type="number" id="profile-risk-trades" class="form-input" placeholder="4" value="4">
+            </div>
+          </div>
+
+          <div style="margin-top: 1rem;">
+            <label class="form-label" style="margin-bottom: 0.5rem; display: block;">Trader Commitment & Non-Negotiables:</label>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <label class="rule-item-box">
+                <input type="checkbox" id="rule-stoploss" checked>
+                <span>Always place Stop-Loss order immediately after entry</span>
+              </label>
+              <label class="rule-item-box">
+                <input type="checkbox" id="rule-two-losses" checked>
+                <span>Stop trading for the day after 2 consecutive losses</span>
+              </label>
+              <label class="rule-item-box">
+                <input type="checkbox" id="rule-no-fomo" checked>
+                <span>No FOMO entries — wait for pullbacks or confirmed breakout</span>
+              </label>
+              <label class="rule-item-box">
+                <input type="checkbox" id="rule-journal" checked>
+                <span>Review every trade in this journal at market close</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: Starting Capital & Currency -->
+        <div id="subtab-profile-capital" class="profile-tab-section" style="display: none;">
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="setting-currency">Display Currency</label>
+              <select id="setting-currency" class="form-select">
+                <option value="₹">₹ - Indian Rupee (INR)</option>
+                <option value="$">$ - US Dollar (USD)</option>
+                <option value="€">€ - Euro (EUR)</option>
+                <option value="£">£ - British Pound (GBP)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="setting-starting-capital">Starting Capital *</label>
+              <input type="number" id="setting-starting-capital" class="form-input" min="0" step="1000" placeholder="500000">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 0.75rem;">
+            <label class="form-label">Quick Presets:</label>
+            <div class="symbol-chips">
+              <button type="button" class="chip-btn" data-capital="100000">1 Lakh (100k)</button>
+              <button type="button" class="chip-btn" data-capital="250000">2.5 Lakhs (250k)</button>
+              <button type="button" class="chip-btn" data-capital="500000">5 Lakhs (500k)</button>
+              <button type="button" class="chip-btn" data-capital="1000000">10 Lakhs (1M)</button>
+              <button type="button" class="chip-btn" data-capital="10000">$10,000</button>
+              <button type="button" class="chip-btn" data-capital="50000">$50,000</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: Data Management & Backup -->
+        <div id="subtab-profile-data" class="profile-tab-section" style="display: none;">
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+            Export or restore your full journal database. All records are stored safely in your browser's LocalStorage.
+          </p>
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <button type="button" id="btn-export-json" class="btn btn-secondary btn-sm">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              Download JSON Backup
+            </button>
+            <button type="button" id="btn-import-json-trigger" class="btn btn-secondary btn-sm">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+              Restore from JSON Backup
+            </button>
+            <input type="file" id="input-import-json" accept=".json,.csv" style="display: none;">
+            <button type="button" id="btn-clear-all-trades" class="btn btn-outline-danger btn-sm">
+              Clear All Trades
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="modal-profile-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-save-profile">Save Profile & Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 3: LOGIN / ACCOUNT AUTH MODAL (Clean, Plain & Minimalist)
+       ========================================================================= -->
+  <div class="modal-backdrop" id="modal-auth" role="dialog" aria-modal="true" aria-labelledby="modal-auth-title">
+    <div class="modal-card" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-auth-title">
+          <span id="auth-title-text">Sign In</span>
+        </h3>
+        <button class="modal-close-btn" id="modal-auth-close">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Toggle Sign In vs Register -->
+        <div class="auth-toggle-bar">
+          <button type="button" class="auth-toggle-btn active" id="btn-auth-mode-login">Sign In</button>
+          <button type="button" class="auth-toggle-btn" id="btn-auth-mode-register">Create Account</button>
+        </div>
+
+        <form id="auth-form">
+          <div class="form-group" id="group-auth-name" style="display: none; margin-bottom: 0.85rem;">
+            <label class="form-label" for="auth-input-name">Full Name</label>
+            <input type="text" id="auth-input-name" class="form-input" placeholder="e.g. Ansh Sharma">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0.85rem;">
+            <label class="form-label" for="auth-input-email">Email Address</label>
+            <input type="email" id="auth-input-email" class="form-input" placeholder="name@example.com" required>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0.85rem;">
+            <label class="form-label" for="auth-input-password">Password</label>
+            <input type="password" id="auth-input-password" class="form-input" placeholder="••••••••" required>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; font-size: 0.8rem;">
+            <label style="display: flex; align-items: center; gap: 0.4rem; color: var(--text-secondary); cursor: pointer;">
+              <input type="checkbox" id="auth-remember" checked>
+              <span>Remember me</span>
+            </label>
+            <a href="#" id="auth-forgot-link" style="color: var(--color-accent); text-decoration: none;">Forgot password?</a>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.65rem;" id="btn-auth-submit">
+            Sign In
+          </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 1rem;">
+          <a href="login.html" style="font-size: 0.775rem; color: var(--text-muted); text-decoration: none;">
+            Open Dedicated Login Page →
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 4: ANALYTICS & EQUITY CURVE MODAL
+       ========================================================================= -->
+  <div class="modal-backdrop" id="modal-analytics" role="dialog" aria-modal="true" aria-labelledby="modal-analytics-title">
+    <div class="modal-card" style="max-width: 720px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-analytics-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-profit);">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+            <polyline points="17 6 23 6 23 12"></polyline>
+          </svg>
+          Trading Performance & Equity Curve
+        </h3>
+        <button class="modal-close-btn" id="modal-analytics-close">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Interactive Canvas Chart for Cumulative Net P&L -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Cumulative Balance Growth</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Interactive Equity Curve</span>
+          </div>
+          <div class="analytics-chart-container">
+            <canvas id="equity-chart-canvas"></canvas>
+          </div>
+        </div>
+
+        <!-- Additional Performance Breakdown Grid -->
+        <div class="analytics-stats-grid">
+          <div class="analytic-stat-box">
+            <span class="analytic-stat-label">Best Trade</span>
+            <span class="analytic-stat-val profit" id="stat-best-trade">+₹0</span>
+          </div>
+          <div class="analytic-stat-box">
+            <span class="analytic-stat-label">Worst Trade</span>
+            <span class="analytic-stat-val loss" id="stat-worst-trade">-₹0</span>
+          </div>
+          <div class="analytic-stat-box">
+            <span class="analytic-stat-label">Avg Winner</span>
+            <span class="analytic-stat-val profit" id="stat-avg-win">₹0</span>
+          </div>
+          <div class="analytic-stat-box">
+            <span class="analytic-stat-label">Avg Loser</span>
+            <span class="analytic-stat-val loss" id="stat-avg-loss">₹0</span>
+          </div>
+          <div class="analytic-stat-box">
+            <span class="analytic-stat-label">Long Win %</span>
+            <span class="analytic-stat-val" id="stat-long-win">0%</span>
+          </div>
+          <div class="analytic-stat-box">
+            <span class="analytic-stat-label">Short Win %</span>
+            <span class="analytic-stat-val" id="stat-short-win">0%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="modal-analytics-close-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Unified API Client & Persistent Database -->
+  <script src="api-client.js"></script>
+  <!-- Main Application Script -->
+  <script src="app.js"></script>
+</body>
+</html>
