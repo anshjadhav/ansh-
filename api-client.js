@@ -14,7 +14,7 @@ const ApiClient = (function() {
   };
 
   // Determine API Base URL (Render backend or local dev)
-  let baseUrl = 'https://ansh-1qyw.onrender.com';
+  let baseUrl = 'https://ansh-lqyw.onrender.com';
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     baseUrl = 'http://localhost:3000';
   } else if (window.location.origin && window.location.origin.includes('onrender.com')) {

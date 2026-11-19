@@ -132,15 +132,15 @@ async function syncFromMongo() {
       const local = readLocalDbFile();
       await col.updateOne(
         { _id: 'main_store' },
-        { $set: { _id: 'main_store', accounts: local.accounts, trades: local.trades, sessions: local.sessions, updatedAt: new Date().toISOString() } },
+        { $set: { accounts: local.accounts, trades: local.trades, sessions: local.sessions, updatedAt: new Date().toISOString() } },
         { upsert: true }
       );
       dbCache = local;
       console.log('  [MongoDB Atlas] Initialized remote cloud database with local data.');
     } else {
       dbCache = {
-        accounts: doc.accounts || [],
-        trades: doc.trades || [],
+        accounts: Array.isArray(doc.accounts) ? doc.accounts : [],
+        trades: Array.isArray(doc.trades) ? doc.trades : [],
         sessions: doc.sessions || {}
       };
       writeLocalDbFile(dbCache);
@@ -148,31 +148,40 @@ async function syncFromMongo() {
     }
   } catch (err) {
     console.error('Error syncing from MongoDB:', err.message);
+    dbCache = readLocalDbFile();
   }
 }
 
 function readDb() {
-  if (dbCache) {
+  if (dbCache && Array.isArray(dbCache.accounts)) {
     return dbCache;
   }
   dbCache = readLocalDbFile();
+  if (!dbCache || !Array.isArray(dbCache.accounts)) {
+    dbCache = { accounts: [], trades: [], sessions: {} };
+  }
   return dbCache;
 }
 
 function writeDb(data) {
-  dbCache = data;
-  writeLocalDbFile(data);
+  try {
+    dbCache = data;
+    writeLocalDbFile(data);
 
-  if (isMongoConnected && mongoDb) {
-    mongoDb.collection('app_data').updateOne(
-      { _id: 'main_store' },
-      { $set: { accounts: data.accounts, trades: data.trades, sessions: data.sessions, updatedAt: new Date().toISOString() } },
-      { upsert: true }
-    ).catch(err => {
-      console.error('MongoDB Atlas background write failed:', err.message);
-    });
+    if (isMongoConnected && mongoDb) {
+      mongoDb.collection('app_data').updateOne(
+        { _id: 'main_store' },
+        { $set: { accounts: data.accounts, trades: data.trades, sessions: data.sessions, updatedAt: new Date().toISOString() } },
+        { upsert: true }
+      ).catch(err => {
+        console.error('MongoDB Atlas background write failed:', err.message);
+      });
+    }
+    return true;
+  } catch (err) {
+    console.error('writeDb error:', err);
+    return false;
   }
-  return true;
 }
 
 // Generate secure session token

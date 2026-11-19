@@ -1100,9 +1100,10 @@
           openOtpView(email, 'Account Registration');
 
         } catch (err) {
+          console.error('Registration caught error:', err);
           submitBtn.disabled = false;
           submitBtn.textContent = 'Create Account';
-          showError('Error creating account. Please try again.');
+          showError('Registration failed: ' + (err.message || 'Please check connection.'));
         }
       }
     });
