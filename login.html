@@ -10,8 +10,250 @@
   
   <!-- EmailJS SDK for browser email delivery -->
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-  <!-- Unified API Client & Persistent Database -->
-  <script src="api-client.js"></script>
+  
+  <!-- Unified API Client & Cloud Database Engine (Embedded for 100% reliability) -->
+  <script>
+  window.ApiClient = (function() {
+    const STORAGE_KEYS = {
+      USER: 'trading_journal_user_v1',
+      ACCOUNTS: 'trading_journal_accounts_v1',
+      TRADES: 'trading_journal_trades_v1',
+      CAPITAL: 'trading_journal_capital_v1',
+      TOKEN: 'trading_journal_token_v1'
+    };
+
+    let baseUrl = 'https://ansh-lqyw.onrender.com';
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      baseUrl = 'http://localhost:3000';
+    } else if (window.location.origin && window.location.origin.includes('onrender.com')) {
+      baseUrl = window.location.origin;
+    }
+
+    let isBackendOnline = false;
+    let hasCheckedHealth = false;
+
+    async function checkHealth() {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch(`${baseUrl}/api/health`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          isBackendOnline = true;
+        } else {
+          isBackendOnline = false;
+        }
+      } catch (e) {
+        isBackendOnline = false;
+      }
+      hasCheckedHealth = true;
+      return isBackendOnline;
+    }
+
+    function getLocalAccounts() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS.ACCOUNTS);
+        if (!raw) {
+          const defaultAccounts = [
+            {
+              email: 'ansh@trading.pro',
+              password: 'password123',
+              name: 'Ansh',
+              fullName: 'Ansh Sharma',
+              tradingStyle: 'Intraday Options & Futures',
+              broker: 'Zerodha Kite',
+              capital: 500000,
+              isVerified: true,
+              createdAt: '2026-10-01T00:00:00.000Z'
+            }
+          ];
+          localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(defaultAccounts));
+          return defaultAccounts;
+        }
+        return JSON.parse(raw) || [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveLocalAccount(account) {
+      const accounts = getLocalAccounts();
+      const idx = accounts.findIndex(a => a.email.toLowerCase() === account.email.toLowerCase());
+      if (idx !== -1) {
+        accounts[idx] = { ...accounts[idx], ...account };
+      } else {
+        accounts.push(account);
+      }
+      localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(accounts));
+    }
+
+    // Auto check on load
+    checkHealth();
+
+    return {
+      STORAGE_KEYS,
+      isOnline: () => isBackendOnline,
+      checkHealth,
+
+      async register(data) {
+        if (!hasCheckedHealth) {
+          await checkHealth();
+        }
+
+        const email = data.email.trim();
+        const password = data.password;
+        const fullName = data.fullName ? data.fullName.trim() : '';
+        const name = fullName ? fullName.split(' ')[0] : email.split('@')[0];
+        const tradingStyle = data.tradingStyle || 'Intraday Options & Futures';
+        const broker = data.broker || 'Zerodha Kite';
+        const capital = parseFloat(data.capital) || 500000;
+
+        const newAccount = {
+          id: 'acc_' + Date.now(),
+          email: email,
+          password: password,
+          name: name,
+          fullName: fullName || name,
+          tradingStyle: tradingStyle,
+          broker: broker,
+          capital: capital,
+          isVerified: true,
+          createdAt: new Date().toISOString()
+        };
+
+        const userObj = {
+          isLoggedIn: true,
+          isVerified: true,
+          name: newAccount.name,
+          fullName: newAccount.fullName,
+          email: newAccount.email,
+          avatar: (newAccount.name.substring(0, 2) || 'TR').toUpperCase(),
+          role: 'PRO TRADER',
+          tradingStyle: newAccount.tradingStyle,
+          broker: newAccount.broker,
+          maxDailyLoss: 10000,
+          maxTradesPerDay: 4,
+          rules: { stoploss: true, twoLosses: true, noFomo: true, journal: true }
+        };
+
+        // Cache locally
+        saveLocalAccount(newAccount);
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userObj));
+        localStorage.setItem(STORAGE_KEYS.CAPITAL, capital.toString());
+
+        // Sync with backend (Render + MongoDB)
+        try {
+          const res = await fetch(`${baseUrl}/api/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, fullName, tradingStyle, broker, capital })
+          });
+          const json = await res.json();
+          if (!res.ok || !json.success) {
+            return {
+              success: false,
+              message: json.message || 'Error creating account.'
+            };
+          }
+          if (json.token) {
+            localStorage.setItem(STORAGE_KEYS.TOKEN, json.token);
+          }
+          return { success: true, user: json.user || userObj, capital: json.capital || capital, isBackend: true };
+        } catch (e) {
+          console.warn('Backend register fetch failed, relying on local storage:', e);
+          return { success: true, user: userObj, capital: capital, isBackend: false };
+        }
+      },
+
+      async login(email, password) {
+        const cleanEmail = (email || '').trim();
+        if (!hasCheckedHealth) {
+          await checkHealth();
+        }
+
+        // Try backend first (Render + MongoDB)
+        try {
+          const res = await fetch(`${baseUrl}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: cleanEmail, password: password })
+          });
+          const json = await res.json();
+          if (res.ok && json.success) {
+            if (json.token) {
+              localStorage.setItem(STORAGE_KEYS.TOKEN, json.token);
+            }
+            if (json.user) {
+              localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(json.user));
+              saveLocalAccount({
+                email: cleanEmail,
+                password: password,
+                name: json.user.name,
+                fullName: json.user.fullName || json.user.name,
+                tradingStyle: json.user.tradingStyle,
+                broker: json.user.broker,
+                capital: json.capital || 500000,
+                isVerified: true
+              });
+            }
+            if (json.capital) {
+              localStorage.setItem(STORAGE_KEYS.CAPITAL, json.capital.toString());
+            }
+            return { success: true, user: json.user, capital: json.capital, isBackend: true };
+          } else if (res.status === 401 || res.status === 404 || res.status === 400) {
+            // Server explicitly rejected credentials
+            return {
+              success: false,
+              message: json.message || 'Invalid email or password.'
+            };
+          }
+        } catch (e) {
+          console.warn('Backend login fetch error, attempting local database:', e);
+        }
+
+        // Fallback to local accounts
+        const accounts = getLocalAccounts();
+        const found = accounts.find(a => a.email.toLowerCase() === cleanEmail.toLowerCase());
+
+        if (!found) {
+          return {
+            success: false,
+            message: `Account not found with email "${cleanEmail}"! Please click "Create Account" above to sign up first.`
+          };
+        }
+
+        if (found.password !== password) {
+          return {
+            success: false,
+            message: 'Incorrect password! Please check your password and try again.'
+          };
+        }
+
+        const userObj = {
+          isLoggedIn: true,
+          isVerified: true,
+          name: found.name,
+          fullName: found.fullName || found.name,
+          email: found.email,
+          avatar: (found.name.substring(0, 2) || 'TR').toUpperCase(),
+          role: 'PRO TRADER',
+          tradingStyle: found.tradingStyle || 'Intraday Options & Futures',
+          broker: found.broker || 'Zerodha Kite',
+          maxDailyLoss: 10000,
+          maxTradesPerDay: 4,
+          rules: found.rules || { stoploss: true, twoLosses: true, noFomo: true, journal: true }
+        };
+
+        const capital = found.capital || 500000;
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userObj));
+        localStorage.setItem(STORAGE_KEYS.CAPITAL, capital.toString());
+
+        return { success: true, user: userObj, capital: capital, isBackend: false };
+      }
+    };
+  })();
+  const ApiClient = window.ApiClient;
+  </script>
 
   <style>
     :root {
