@@ -29,8 +29,21 @@ const MIME_TYPES = {
 };
 
 // =============================================================================
-// DATABASE STORAGE ENGINE
+// DATABASE STORAGE ENGINE (LOCAL JSON + MONGODB ATLAS CLOUD)
 // =============================================================================
+
+let MongoClient = null;
+try {
+  MongoClient = require('mongodb').MongoClient;
+} catch (e) {
+  // mongodb module will be installed on Render automatically via package.json
+}
+
+const MONGODB_URI = process.env.MONGODB_URI || '';
+let mongoClient = null;
+let mongoDb = null;
+let isMongoConnected = false;
+let dbCache = null;
 
 function ensureDbExists() {
   const dir = path.dirname(DB_FILE);
@@ -60,27 +73,106 @@ function ensureDbExists() {
   }
 }
 
-function readDb() {
+function readLocalDbFile() {
   ensureDbExists();
   try {
     const raw = fs.readFileSync(DB_FILE, 'utf8');
     return JSON.parse(raw);
   } catch (err) {
-    console.error('Error reading database:', err);
+    console.error('Error reading local database:', err);
     return { accounts: [], trades: [], sessions: {} };
   }
 }
 
-function writeDb(data) {
+function writeLocalDbFile(data) {
   try {
+    ensureDbExists();
     const tempFile = DB_FILE + '.tmp';
     fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf8');
     fs.renameSync(tempFile, DB_FILE);
     return true;
   } catch (err) {
-    console.error('Error saving database:', err);
+    console.error('Error saving local database:', err);
     return false;
   }
+}
+
+async function initMongo() {
+  if (!MONGODB_URI || !MongoClient) {
+    console.log('  Database Mode:  Local JSON File (data/db.json)');
+    return false;
+  }
+  try {
+    console.log('  Connecting to MongoDB Atlas Cloud Database...');
+    mongoClient = new MongoClient(MONGODB_URI, {
+      serverSelectionTimeoutMS: 6000
+    });
+    await mongoClient.connect();
+    mongoDb = mongoClient.db('trading_journal');
+    isMongoConnected = true;
+    console.log('  Database Mode:  MongoDB Atlas Cloud (Connected & Synced!)');
+
+    // Sync from MongoDB Atlas on startup
+    await syncFromMongo();
+    return true;
+  } catch (err) {
+    console.error('Failed to connect to MongoDB Atlas, falling back to local file:', err.message);
+    isMongoConnected = false;
+    return false;
+  }
+}
+
+async function syncFromMongo() {
+  if (!isMongoConnected || !mongoDb) return;
+  try {
+    const col = mongoDb.collection('app_data');
+    const doc = await col.findOne({ _id: 'main_store' });
+    if (!doc) {
+      // First time initialization: upload current local data to MongoDB
+      const local = readLocalDbFile();
+      await col.updateOne(
+        { _id: 'main_store' },
+        { $set: { _id: 'main_store', accounts: local.accounts, trades: local.trades, sessions: local.sessions, updatedAt: new Date().toISOString() } },
+        { upsert: true }
+      );
+      dbCache = local;
+      console.log('  [MongoDB Atlas] Initialized remote cloud database with local data.');
+    } else {
+      dbCache = {
+        accounts: doc.accounts || [],
+        trades: doc.trades || [],
+        sessions: doc.sessions || {}
+      };
+      writeLocalDbFile(dbCache);
+      console.log(`  [MongoDB Atlas] Loaded ${dbCache.accounts.length} accounts, ${dbCache.trades.length} trades from Cloud.`);
+    }
+  } catch (err) {
+    console.error('Error syncing from MongoDB:', err.message);
+  }
+}
+
+function readDb() {
+  if (dbCache) {
+    return dbCache;
+  }
+  dbCache = readLocalDbFile();
+  return dbCache;
+}
+
+function writeDb(data) {
+  dbCache = data;
+  writeLocalDbFile(data);
+
+  if (isMongoConnected && mongoDb) {
+    mongoDb.collection('app_data').updateOne(
+      { _id: 'main_store' },
+      { $set: { accounts: data.accounts, trades: data.trades, sessions: data.sessions, updatedAt: new Date().toISOString() } },
+      { upsert: true }
+    ).catch(err => {
+      console.error('MongoDB Atlas background write failed:', err.message);
+    });
+  }
+  return true;
 }
 
 // Generate secure session token
@@ -531,11 +623,16 @@ const server = http.createServer(async (req, res) => {
 
 // Start Server
 ensureDbExists();
-server.listen(PORT, () => {
-  console.log('================================================================');
-  console.log('  📈 TRADING JOURNAL BACKEND SERVER');
-  console.log(`  Local URL:      http://localhost:${PORT}`);
-  console.log(`  Database File:  ${DB_FILE}`);
-  console.log('  Status:         Online & Ready');
-  console.log('================================================================');
+dbCache = readLocalDbFile();
+
+initMongo().finally(() => {
+  server.listen(PORT, () => {
+    console.log('================================================================');
+    console.log('  📈 TRADING JOURNAL BACKEND SERVER');
+    console.log(`  Local URL:      http://localhost:${PORT}`);
+    console.log(`  Database File:  ${DB_FILE}`);
+    console.log(`  Cloud DB:       ${isMongoConnected ? 'MongoDB Atlas (Connected)' : 'Standby / Local fallback'}`);
+    console.log('  Status:         Online & Ready');
+    console.log('================================================================');
+  });
 });

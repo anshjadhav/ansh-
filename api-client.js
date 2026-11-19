@@ -13,9 +13,11 @@ const ApiClient = (function() {
     TOKEN: 'trading_journal_token_v1'
   };
 
-  // Determine API Base URL
-  let baseUrl = 'http://localhost:3000';
-  if (window.location.protocol.startsWith('http')) {
+  // Determine API Base URL (Render backend or local dev)
+  let baseUrl = 'https://ansh-1qyw.onrender.com';
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    baseUrl = 'http://localhost:3000';
+  } else if (window.location.origin && window.location.origin.includes('onrender.com')) {
     baseUrl = window.location.origin;
   }
 
@@ -26,7 +28,7 @@ const ApiClient = (function() {
   async function checkHealth() {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1200);
+      const timeoutId = setTimeout(() => controller.abort(), 1800);
       const res = await fetch(`${baseUrl}/api/health`, {
         signal: controller.signal
       });
@@ -115,6 +117,10 @@ const ApiClient = (function() {
     // =========================================================================
 
     async register(data) {
+      if (!hasCheckedHealth) {
+        await checkHealth();
+      }
+
       const email = data.email.trim();
       const password = data.password;
       const fullName = data.fullName ? data.fullName.trim() : '';
@@ -167,6 +173,12 @@ const ApiClient = (function() {
             })
           });
           const json = await res.json();
+          if (!res.ok || !json.success) {
+            return {
+              success: false,
+              message: json.message || 'Error creating account.'
+            };
+          }
           if (json.token) {
             localStorage.setItem(STORAGE_KEYS.TOKEN, json.token);
           }
@@ -181,6 +193,10 @@ const ApiClient = (function() {
 
     async login(email, password) {
       const cleanEmail = (email || '').trim();
+
+      if (!hasCheckedHealth) {
+        await checkHealth();
+      }
 
       // Check backend first if online
       if (isBackendOnline) {
@@ -204,6 +220,17 @@ const ApiClient = (function() {
           }
           if (json.user) {
             localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(json.user));
+            // Also save to local accounts cache on this device
+            saveLocalAccount({
+              email: cleanEmail,
+              password: password,
+              name: json.user.name,
+              fullName: json.user.fullName || json.user.name,
+              tradingStyle: json.user.tradingStyle,
+              broker: json.user.broker,
+              capital: json.capital || 500000,
+              isVerified: true
+            });
           }
           if (json.capital) {
             localStorage.setItem(STORAGE_KEYS.CAPITAL, json.capital.toString());
@@ -238,6 +265,22 @@ const ApiClient = (function() {
         isVerified: true,
         name: found.name,
         fullName: found.fullName || found.name,
+        email: found.email,
+        avatar: (found.name.substring(0, 2) || 'TR').toUpperCase(),
+        role: 'PRO TRADER',
+        tradingStyle: found.tradingStyle || 'Intraday Options & Futures',
+        broker: found.broker || 'Zerodha Kite',
+        maxDailyLoss: found.maxDailyLoss || 10000,
+        maxTradesPerDay: found.maxTradesPerDay || 4,
+        rules: found.rules || { stoploss: true, twoLosses: true, noFomo: true, journal: true }
+      };
+
+      const capital = found.capital || 500000;
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userObj));
+      localStorage.setItem(STORAGE_KEYS.CAPITAL, capital.toString());
+
+      return { success: true, user: userObj, capital: capital, isBackend: false };
+    },
         email: found.email,
         avatar: (found.name.substring(0, 2) || 'TR').toUpperCase(),
         role: 'PRO TRADER',
