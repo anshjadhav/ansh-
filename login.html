@@ -1027,47 +1027,21 @@
         submitBtn.textContent = 'Checking account...';
 
         try {
-          // Check if account exists
-          let accounts = [];
-          try {
-            const raw = localStorage.getItem('trading_journal_accounts_v1');
-            accounts = raw ? JSON.parse(raw) : [];
-          } catch(e) {}
+          // Check credentials via unified ApiClient (queries cloud server DB and local storage)
+          const loginRes = await ApiClient.login(email, password);
 
-          const found = accounts.find(a => a.email.toLowerCase() === email.toLowerCase());
-
-          if (!found) {
+          if (!loginRes || !loginRes.success) {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Sign In';
-            showError(`Account not found with email "${email}"! Please click "Create Account" above to sign up first.`);
-            return;
-          }
-
-          if (found.password !== password) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Sign In';
-            showError('Incorrect password! Please check your password and try again.');
+            showError((loginRes && loginRes.message) || `Account not found with email "${email}"! Please click "Create Account" above to sign up first.`);
             return;
           }
 
           pendingAuthData = {
             mode: 'login',
-            email: found.email,
-            user: {
-              isLoggedIn: true,
-              isVerified: true,
-              name: found.name,
-              fullName: found.fullName || found.name,
-              email: found.email,
-              avatar: (found.name.substring(0, 2) || 'TR').toUpperCase(),
-              role: 'PRO TRADER',
-              tradingStyle: found.tradingStyle || 'Intraday Options & Futures',
-              broker: found.broker || 'Zerodha Kite',
-              maxDailyLoss: found.maxDailyLoss || 10000,
-              maxTradesPerDay: found.maxTradesPerDay || 4,
-              rules: found.rules || { stoploss: true, twoLosses: true, noFomo: true, journal: true }
-            },
-            capital: found.capital || 500000
+            email: email,
+            user: loginRes.user,
+            capital: loginRes.capital || 500000
           };
 
           submitBtn.disabled = false;
@@ -1095,21 +1069,7 @@
         submitBtn.textContent = 'Checking registration...';
 
         try {
-          let accounts = [];
-          try {
-            const raw = localStorage.getItem('trading_journal_accounts_v1');
-            accounts = raw ? JSON.parse(raw) : [];
-          } catch(e) {}
-
-          const existing = accounts.find(a => a.email.toLowerCase() === email.toLowerCase());
-          if (existing) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Create Account';
-            showError(`An account with email "${email}" already exists! Please switch to "Sign In" to log in.`);
-            return;
-          }
-
-          // Register account in DB immediately so it's safely stored
+          // Register account in DB immediately so it's safely stored across all devices
           const regResult = await ApiClient.register({
             email,
             password,
@@ -1118,6 +1078,13 @@
             capital: capital,
             broker: 'Zerodha Kite'
           });
+
+          if (!regResult || !regResult.success) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create Account';
+            showError((regResult && regResult.message) || 'Error creating account. Please try again.');
+            return;
+          }
 
           pendingAuthData = {
             mode: 'signup',
