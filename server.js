@@ -43,6 +43,7 @@ const MONGODB_URI = process.env.MONGODB_URI || '';
 let mongoClient = null;
 let mongoDb = null;
 let isMongoConnected = false;
+let mongoConnectionError = null;
 let dbCache = null;
 
 function ensureDbExists() {
@@ -98,8 +99,14 @@ function writeLocalDbFile(data) {
 }
 
 async function initMongo() {
-  if (!MONGODB_URI || !MongoClient) {
-    console.log('  Database Mode:  Local JSON File (data/db.json)');
+  if (!MONGODB_URI) {
+    mongoConnectionError = 'MONGODB_URI environment variable is missing in Render';
+    console.log('  Database Mode:  Local JSON File (MONGODB_URI not set)');
+    return false;
+  }
+  if (!MongoClient) {
+    mongoConnectionError = 'mongodb npm package is not installed (Render Build Command should be npm install)';
+    console.log('  Database Mode:  Local JSON File (mongodb package missing)');
     return false;
   }
   try {
@@ -110,12 +117,14 @@ async function initMongo() {
     await mongoClient.connect();
     mongoDb = mongoClient.db('trading_journal');
     isMongoConnected = true;
+    mongoConnectionError = null;
     console.log('  Database Mode:  MongoDB Atlas Cloud (Connected & Synced!)');
 
     // Sync from MongoDB Atlas on startup
     await syncFromMongo();
     return true;
   } catch (err) {
+    mongoConnectionError = err.message;
     console.error('Failed to connect to MongoDB Atlas, falling back to local file:', err.message);
     isMongoConnected = false;
     return false;
@@ -289,11 +298,21 @@ const server = http.createServer(async (req, res) => {
     try {
       // 1. Health check
       if (pathname === '/api/health' && method === 'GET') {
+        const db = readDb();
         return sendJson(res, 200, {
           status: 'ok',
           service: 'Trading Journal Backend',
           time: new Date().toISOString(),
-          version: '1.0.0'
+          version: '1.0.0',
+          database: {
+            mode: isMongoConnected ? 'MongoDB Atlas (Cloud Permanent)' : 'Local JSON File (Temporary)',
+            isMongoConnected: isMongoConnected,
+            hasMongoUri: !!MONGODB_URI,
+            hasMongoClient: !!MongoClient,
+            error: mongoConnectionError,
+            accountsCount: (db.accounts || []).length,
+            tradesCount: (db.trades || []).length
+          }
         });
       }
 
